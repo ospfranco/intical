@@ -7,7 +7,8 @@ import Date from '../components/date'
 import { useRef, useEffect } from 'react'
 
 let CLOCK_RADIUS = 150
-let CLOCK_MARK_RADIUS = 140
+let CLOCK_MARK_RADIUS = 130
+let CLOCK_LETTER_RADIUS = 115
 let CLOCK_CENTER_X = 200
 let CLOCK_CENTER_Y = 200
 
@@ -15,6 +16,9 @@ function draw(ctx: CanvasRenderingContext2D) {
   /**
    * Draw base clock
    */
+  ctx.translate(0.5, 0.5);
+  ctx.font = "12px Avenir Next"
+
   ctx.fillStyle = 'white'
 
   ctx.strokeStyle = 'gray'
@@ -29,19 +33,27 @@ function draw(ctx: CanvasRenderingContext2D) {
   for(let ii = 0; ii < 48; ii++) {
 
     let angleRad = angleIntervalRad * ii
-    let x = CLOCK_CENTER_X + Math.cos(angleRad) * CLOCK_MARK_RADIUS
-    let y = CLOCK_CENTER_Y + Math.sin(angleRad) * CLOCK_MARK_RADIUS
-    let radius = ii % 2 === 0 ? 3 : 2;
-
-    console.warn(`angle rad`, angleRad)
+    let textX = CLOCK_CENTER_X + Math.cos(angleRad) * CLOCK_LETTER_RADIUS
+    let textY = CLOCK_CENTER_X + Math.sin(angleRad) * CLOCK_LETTER_RADIUS
+    let markX = CLOCK_CENTER_X + Math.cos(angleRad) * CLOCK_MARK_RADIUS
+    let markY = CLOCK_CENTER_Y + Math.sin(angleRad) * CLOCK_MARK_RADIUS
+    let isHour = ii % 2 === 0
+    let radius = isHour ? 3 : 2;
 
     ctx.save()
-    ctx.translate(x, y)
+    ctx.translate(markX, markY)
     ctx.beginPath()
     ctx.fillStyle = 'black'
     ctx.rotate(Math.PI / 2 +angleRad)
-    ctx.fillRect(-radius, -radius * 2 , radius, radius * 2)
+    ctx.roundRect(-radius, -radius * 2 , radius, radius * 2, 1)
+    ctx.fill()
     ctx.restore()
+
+    if(isHour) {
+      ctx.textAlign = "center"
+      ctx.fillStyle = 'black'
+      ctx.fillText(((ii / 2 + 6) % 24).toString(), textX, textY + 5)
+    }
   }
 
   /**
@@ -54,6 +66,19 @@ export default function Home({ allPostsData }) {
 
   useEffect(() => {
     let ctx = canvasRef.current.getContext('2d')
+    CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+      if (w < 2 * r) r = w / 2;
+      if (h < 2 * r) r = h / 2;
+      this.beginPath();
+      this.moveTo(x+r, y);
+      this.arcTo(x+w, y,   x+w, y+h, r);
+      this.arcTo(x+w, y+h, x,   y+h, r);
+      this.arcTo(x,   y+h, x,   y,   r);
+      this.arcTo(x,   y,   x+w, y,   r);
+      this.closePath();
+      return this;
+    }
+
     ctx.clearRect(0, 0, 550, 550)
     draw(ctx)
   })
