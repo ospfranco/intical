@@ -3,7 +3,6 @@ import Layout, { siteTitle } from '../components/layout'
 import utilStyles from '../styles/utils.module.css'
 import { getSortedPostsData } from '../lib/posts'
 import Link from 'next/link'
-import Date from '../components/date'
 import { useRef, useEffect } from 'react'
 
 let CLOCK_RADIUS = 150
@@ -16,18 +15,18 @@ function draw(ctx: CanvasRenderingContext2D) {
   /**
    * Draw base clock
    */
-  ctx.translate(0.5, 0.5);
+  ctx.translate(0.1, 0.1);
   ctx.font = "12px Avenir Next"
 
-  ctx.fillStyle = 'white'
-
-  ctx.strokeStyle = 'gray'
-
+  // Clock background
   ctx.beginPath();
+  ctx.fillStyle = 'white'
+  ctx.strokeStyle = 'gray'
   ctx.arc(CLOCK_CENTER_X, CLOCK_CENTER_Y, CLOCK_RADIUS, 0, 2 * Math.PI);
   ctx.fill();
   ctx.stroke();
 
+  // Draw dials
   // 48 = 24hours * 2 strokes per hour
   let angleIntervalRad = Math.PI * 2 / 48
   for(let ii = 0; ii < 48; ii++) {
@@ -44,7 +43,7 @@ function draw(ctx: CanvasRenderingContext2D) {
     ctx.translate(markX, markY)
     ctx.beginPath()
     ctx.fillStyle = 'black'
-    ctx.rotate(Math.PI / 2 +angleRad)
+    ctx.rotate(Math.PI / 2 + angleRad)
     ctx.roundRect(-radius, -radius * 2 , radius, radius * 2, 1)
     ctx.fill()
     ctx.restore()
@@ -55,6 +54,26 @@ function draw(ctx: CanvasRenderingContext2D) {
       ctx.fillText(((ii / 2 + 6) % 24).toString(), textX, textY + 5)
     }
   }
+
+  // Draw time indicator
+  let d = new Date(), e = new Date(d);
+  let msSinceMidnight = e.getTime() - d.setHours(0,0,0,0);
+  let percentage = msSinceMidnight / 86_400_400
+
+  
+  let rotationAngle = (Math.PI * 2 * percentage) - (Math.PI / 2) - 0.02 // 0.02 = adjust for width of indicator
+  
+  let markX = CLOCK_CENTER_X + Math.cos(rotationAngle) * CLOCK_RADIUS
+  let markY = CLOCK_CENTER_Y + Math.sin(rotationAngle) * CLOCK_RADIUS
+
+  ctx.save()
+  ctx.beginPath()
+  ctx.translate(markX, markY)
+  ctx.rotate(Math.PI / 2 + (Math.PI * 2 * percentage))
+  ctx.fillStyle = 'red'
+  ctx.roundRect(-5, -5, 25, 3, 1)
+  ctx.fill()
+  ctx.restore()
 
   /**
    * End base clock
