@@ -4,27 +4,63 @@ import utilStyles from '../styles/utils.module.css'
 import { getSortedPostsData } from '../lib/posts'
 import Link from 'next/link'
 import { useRef, useEffect } from 'react'
+import {DateTime} from 'luxon'
+import { start } from 'repl'
 
+let appointments = [
+  {start: DateTime.local().toISO() , end: DateTime.local().plus({minutes: 30}).toISO()},
+  {start: DateTime.local().set({hour: 20, minute: 0}).toISO(), end: DateTime.local().set({hour: 21, minute: 30}).toISO()},
+]
+
+let CANVAS_HEIGHT = 600
+let CANVAS_WIDTH = 600
 let CLOCK_RADIUS = 150
+let CLOCK_OFFSET1 = 160
 let CLOCK_MARK_RADIUS = 130
 let CLOCK_LETTER_RADIUS = 115
-let CLOCK_CENTER_X = 200
-let CLOCK_CENTER_Y = 200
+let CLOCK_CENTER_X = CANVAS_HEIGHT / 2
+let CLOCK_CENTER_Y = CANVAS_WIDTH / 2
 
 function draw(ctx: CanvasRenderingContext2D) {
+  // Draw background
+  ctx.fillStyle = '#EEE'
+  ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
   /**
    * Draw base clock
    */
-  ctx.translate(0.1, 0.1);
+  ctx.translate(0.5, 0.5);
   ctx.font = "12px Avenir Next"
 
   // Clock background
   ctx.beginPath();
   ctx.fillStyle = 'white'
-  ctx.strokeStyle = 'gray'
   ctx.arc(CLOCK_CENTER_X, CLOCK_CENTER_Y, CLOCK_RADIUS, 0, 2 * Math.PI);
   ctx.fill();
-  ctx.stroke();
+
+
+  // Draw appointments
+  for(let ii = 0; ii < appointments.length; ii++) {
+    let appo = appointments[ii]
+    let d = new Date(), startDate = new Date(appo.start), endDate = new Date(appo.end)
+    let startMSSinceMidnight = startDate.getTime() - d.setHours(0,0,0,0)
+    let startPercentage = startMSSinceMidnight / 86_400_400
+    let startAngle = (Math.PI * 2 * startPercentage) - (Math.PI / 2)
+
+    let endMSSinceMidnight = endDate.getTime() - d.setHours(0,0,0,0)
+    let endPercentage = endMSSinceMidnight / 86_400_400
+    let endAngle = (Math.PI * 2 * endPercentage) - (Math.PI / 2)
+
+    let helperPointX = CLOCK_CENTER_X + Math.cos(endAngle) * CLOCK_OFFSET1
+    let helperPointY = CLOCK_CENTER_Y + Math.sin(endAngle) * CLOCK_OFFSET1
+
+    ctx.beginPath()
+    ctx.fillStyle = `red`
+    ctx.arc(CLOCK_CENTER_X, CLOCK_CENTER_Y, CLOCK_OFFSET1 + 20, startAngle, endAngle);
+    ctx.lineTo(helperPointX, helperPointY)
+    ctx.arc(CLOCK_CENTER_X, CLOCK_CENTER_Y, CLOCK_OFFSET1, endAngle, startAngle, true)
+    ctx.fill()
+
+  }
 
   // Draw dials
   // 48 = 24hours * 2 strokes per hour
@@ -36,15 +72,17 @@ function draw(ctx: CanvasRenderingContext2D) {
     let textY = CLOCK_CENTER_X + Math.sin(angleRad) * CLOCK_LETTER_RADIUS
     let markX = CLOCK_CENTER_X + Math.cos(angleRad) * CLOCK_MARK_RADIUS
     let markY = CLOCK_CENTER_Y + Math.sin(angleRad) * CLOCK_MARK_RADIUS
+    
     let isHour = ii % 2 === 0
-    let radius = isHour ? 3 : 2;
+    let width = isHour ? 2 : 1;
+    let height = isHour ? 6 : 5
 
     ctx.save()
     ctx.translate(markX, markY)
     ctx.beginPath()
-    ctx.fillStyle = 'black'
     ctx.rotate(Math.PI / 2 + angleRad)
-    ctx.roundRect(-radius, -radius * 2 , radius, radius * 2, 1)
+    ctx.fillStyle = isHour ? 'black' : '#888'
+    ctx.roundRect(-width, -height, width, height, 1)
     ctx.fill()
     ctx.restore()
 
@@ -60,8 +98,10 @@ function draw(ctx: CanvasRenderingContext2D) {
   let msSinceMidnight = e.getTime() - d.setHours(0,0,0,0);
   let percentage = msSinceMidnight / 86_400_400
 
-  
-  let rotationAngle = (Math.PI * 2 * percentage) - (Math.PI / 2) - 0.02 // 0.02 = adjust for width of indicator
+  // (Math.PI * 2 * percentage) = rotation of the handle
+  // - (Math.PI / 2) = reverse 6 hours (0 radians starts at a quarter of the arc)
+  // - 0.02 = adjust for width of indicator
+  let rotationAngle = (Math.PI * 2 * percentage) - (Math.PI / 2) - 0.03 
   
   let markX = CLOCK_CENTER_X + Math.cos(rotationAngle) * CLOCK_RADIUS
   let markY = CLOCK_CENTER_Y + Math.sin(rotationAngle) * CLOCK_RADIUS
@@ -98,7 +138,7 @@ export default function Home({ allPostsData }) {
       return this;
     }
 
-    ctx.clearRect(0, 0, 550, 550)
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
     draw(ctx)
   })
 
@@ -107,7 +147,7 @@ export default function Home({ allPostsData }) {
       <Head>
         <title>{siteTitle}</title>
       </Head>
-      <canvas id="canvas" ref={canvasRef} width="550" height="550">
+      <canvas id="canvas" ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT}>
           This text is displayed if your browser does not support HTML5 Canvas.
       </canvas>
     </Layout>
