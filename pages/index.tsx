@@ -14,10 +14,13 @@ function radFromMidnight(date: DateTime) {
 }
 
 let appointments = [
-  {start: DateTime.local().toISO() , end: DateTime.local().plus({minutes: 30}).toISO()},
-  {start: DateTime.local().set({hour: 20, minute: 0, second: 0, millisecond: 0}).toISO(), end: DateTime.local().set({hour: 21, minute: 30}).toISO()},
+  {start: DateTime.local().toISO() , end: DateTime.local().plus({minutes: 30}).toISO(), color: 'green'},
+  {start: DateTime.local().set({hour: 20, minute: 0, second: 0, millisecond: 0}).toISO(), end: DateTime.local().set({hour: 21, minute: 30}).toISO(), color: 'indigo'},
   {start: DateTime.local().set({hour: 19, minute: 0, second: 0, millisecond: 0}).toISO(), end: DateTime.local().set({hour: 21, minute: 30}).toISO()},
   {start: DateTime.local().set({hour: 10, minute: 0, second: 0, millisecond: 0}).toISO(), end: DateTime.local().set({hour: 11, minute: 0}).toISO()},
+  {start: DateTime.local().set({hour: 8, minute: 0, second: 0, millisecond: 0}).toISO(), end: DateTime.local().set({hour: 10, minute: 0}).toISO(), color: 'indigo'},
+  {start: DateTime.local().set({hour: 12, minute: 0, second: 0, millisecond: 0}).toISO(), end: DateTime.local().set({hour: 16, minute: 0}).toISO()},
+  {start: DateTime.local().set({hour: 9, minute: 0, second: 0, millisecond: 0}).toISO(), end: DateTime.local().set({hour: 11, minute: 0}).toISO(), color: 'indigo'},
 ]
 
 let CANVAS_HEIGHT = 600
@@ -32,9 +35,6 @@ let CLOCK_CENTER_X = CANVAS_HEIGHT / 2
 let CLOCK_CENTER_Y = CANVAS_WIDTH / 2
 
 function draw(ctx: CanvasRenderingContext2D, sunInfo?: {sunrise: DateTime, sunset: DateTime}) {
-  // clear context
-  ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
-
   // Draw background
   ctx.fillStyle = '#EEE'
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
@@ -52,7 +52,8 @@ function draw(ctx: CanvasRenderingContext2D, sunInfo?: {sunrise: DateTime, sunse
   let internalAppointments = appointments.map((appointment) => ({
     start: DateTime.fromISO(appointment.start),
     end: DateTime.fromISO(appointment.end),
-    offset: 0
+    offset: 0,
+    color: appointment.color
   }))
 
   // Draw appointments
@@ -60,32 +61,26 @@ function draw(ctx: CanvasRenderingContext2D, sunInfo?: {sunrise: DateTime, sunse
     let appointment = internalAppointments[ii]
 
     // determine appointment offset
-    for(let jj = ii + 1; jj < internalAppointments.length; jj++) {
+    for(let jj = 0; jj < internalAppointments.length; jj++) {
       if(jj === ii) {
         continue
       }
+
       let otherAppointment = internalAppointments[jj]
       let overlaps = Math.max(appointment.start.valueOf(), otherAppointment.start.valueOf()) <= Math.min(appointment.end.valueOf(), otherAppointment.end.valueOf())
 
       if(overlaps && appointment.offset <= otherAppointment.offset) {
           appointment.offset = otherAppointment.offset + 1
       }
-    
     }
 
-    let startMSSinceMidnight = appointment.start.diff(appointment.start.startOf('day'), 'millisecond').milliseconds
-    // let startMSSinceMidnight = startDate.getTime() - d.setHours(0,0,0,0)
-    let startPercentage = startMSSinceMidnight / 86_400_400
-    let startAngle = (Math.PI * 2 * startPercentage) - (Math.PI / 2)
+    let startAngle = radFromMidnight(appointment.start)
+    let endAngle = radFromMidnight(appointment.end)
 
-    let endMSSinceMidnight = appointment.end.diff(appointment.end.startOf('day'), 'millisecond').milliseconds
-    let endPercentage = endMSSinceMidnight / 86_400_400
-    let endAngle = (Math.PI * 2 * endPercentage) - (Math.PI / 2)
-
-    let radius = APPOINTMENT_OFFSET * appointment.offset + OUTER_CLOCK_RADIUS
+    let radius = APPOINTMENT_OFFSET * (appointment.offset - 1) + OUTER_CLOCK_RADIUS
     
     ctx.beginPath()
-    ctx.fillStyle = `skyblue`
+    ctx.fillStyle = appointment.color ?? `skyblue`
     ctx.arc(CLOCK_CENTER_X, CLOCK_CENTER_Y, radius + APPOINTMENT_HEIGHT, startAngle, endAngle);
     ctx.arc(CLOCK_CENTER_X, CLOCK_CENTER_Y, radius, endAngle, startAngle, true)
     ctx.fill()
@@ -94,24 +89,20 @@ function draw(ctx: CanvasRenderingContext2D, sunInfo?: {sunrise: DateTime, sunse
     let lPivot = appointment.start.startOf('hour')
     while(lPivot.valueOf() <= appointment.end.valueOf() ) {
       if(lPivot.valueOf() >= appointment.start.valueOf()) {
-        let pivotMSSinceMidnight =lPivot.diff(lPivot.startOf('day'), 'millisecond').milliseconds
-        let pivotPercentage = pivotMSSinceMidnight / 86_400_400
-        let pivotAngle = (Math.PI * 2 * pivotPercentage) - (Math.PI / 2)
-  
-        let pivotX = CLOCK_CENTER_X + Math.cos(pivotAngle) * radius
-        let pivotY = CLOCK_CENTER_Y + Math.sin(pivotAngle) * radius
+        let pivotAngle = radFromMidnight(lPivot)
+        let pivotX = CLOCK_CENTER_X + Math.cos(pivotAngle - 0.01) * (radius + APPOINTMENT_HEIGHT)
+        let pivotY = CLOCK_CENTER_Y + Math.sin(pivotAngle - 0.01) * (radius + APPOINTMENT_HEIGHT)
   
         ctx.save()
         ctx.translate(pivotX, pivotY)
         ctx.beginPath()
-        ctx.rotate(Math.PI / 2 + (Math.PI * 2 * pivotPercentage))
+        ctx.rotate(pivotAngle)
         ctx.fillStyle = '#FFFFFF'
-        // ctx.fillStyle = 'green'
         ctx.fillRect(-APPOINTMENT_HEIGHT, 1, APPOINTMENT_HEIGHT, 1)
         ctx.fill()
         ctx.restore()
-        // move to the next hour
       }
+      // move to the next hour
       lPivot = lPivot.plus({hour: 1})
     }
   }
@@ -177,29 +168,28 @@ function draw(ctx: CanvasRenderingContext2D, sunInfo?: {sunrise: DateTime, sunse
   }
 
   // draw center text
-  let textStartY = CLOCK_CENTER_Y - 40
+  let textStartY = CLOCK_CENTER_Y - 50
   ctx.font = "14px Avenir Next"
   ctx.fillText(DateTime.local().weekdayLong, CLOCK_CENTER_X, textStartY)
   ctx.font = "22px Avenir Next"
   ctx.fillText(DateTime.local().weekday.toString(), CLOCK_CENTER_X, textStartY + 30)
+  // ctx.font = "12px Avenir Next"
+  // ctx.fillText("Next", CLOCK_CENTER_X, textStartY + 60)
+  ctx.font = "16px Avenir Next"
+  ctx.fillText("Sprint Retro", CLOCK_CENTER_X, textStartY + 80)
+  ctx.font = "14px Avenir Next"
+  ctx.fillText("10 mins", CLOCK_CENTER_X, textStartY + 100)
 
   // Draw time indicator
-  let d = new Date(), e = new Date(d);
-  let msSinceMidnight = e.getTime() - d.setHours(0,0,0,0);
-  let percentage = msSinceMidnight / 86_400_400
-
-  // (Math.PI * 2 * percentage) = rotation of the handle
-  // - (Math.PI / 2) = reverse 6 hours (0 radians starts at a quarter of the arc)
-  // - 0.02 = adjust for width of indicator
-  let rotationAngle = (Math.PI * 2 * percentage) - (Math.PI / 2) - 0.03 
+  let indicatorAngle = radFromMidnight(DateTime.local()) - 0.03
   
-  let markX = CLOCK_CENTER_X + Math.cos(rotationAngle) * CLOCK_RADIUS
-  let markY = CLOCK_CENTER_Y + Math.sin(rotationAngle) * CLOCK_RADIUS
+  let markX = CLOCK_CENTER_X + Math.cos(indicatorAngle) * (CLOCK_RADIUS - 20)
+  let markY = CLOCK_CENTER_Y + Math.sin(indicatorAngle) * (CLOCK_RADIUS - 20)
 
   ctx.save()
   ctx.beginPath()
   ctx.translate(markX, markY)
-  ctx.rotate(Math.PI / 2 + (Math.PI * 2 * percentage))
+  ctx.rotate(indicatorAngle)
   ctx.fillStyle = 'red'
   ctx.roundRect(-5, -5, 25, 3, 1)
   ctx.fill()
@@ -240,18 +230,9 @@ export default function Home({ allPostsData }) {
       <Head>
         <title>{siteTitle}</title>
       </Head>
-      <canvas id="canvas" ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT}>
+      <canvas ref={canvasRef} width={CANVAS_WIDTH} height={CANVAS_HEIGHT}>
           This text is displayed if your browser does not support HTML5 Canvas.
       </canvas>
     </Layout>
   )
-}
-
-export async function getStaticProps() {
-  const allPostsData = getSortedPostsData()
-  return {
-    props: {
-      allPostsData
-    }
-  }
 }
