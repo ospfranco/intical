@@ -106,15 +106,15 @@ function draw(ctx: CanvasRenderingContext2D, size: number, sunInfo?: {sunrise: D
     while(lPivot.valueOf() <= appointment.end.valueOf() ) {
       if(lPivot.valueOf() >= appointment.start.valueOf()) {
         let pivotAngle = radFromMidnight(lPivot)
-        let pivotX = CLOCK_CENTER_X + Math.cos(pivotAngle - 0.01) * (radius + APPOINTMENT_HEIGHT)
-        let pivotY = CLOCK_CENTER_Y + Math.sin(pivotAngle - 0.01) * (radius + APPOINTMENT_HEIGHT)
+        let pivotX = CLOCK_CENTER_X + Math.cos(pivotAngle) * (radius + APPOINTMENT_HEIGHT)
+        let pivotY = CLOCK_CENTER_Y + Math.sin(pivotAngle) * (radius + APPOINTMENT_HEIGHT)
   
         ctx.save()
         ctx.translate(pivotX, pivotY)
         ctx.beginPath()
         ctx.rotate(pivotAngle)
-        ctx.fillStyle = '#FFFFFF'
-        ctx.fillRect(-APPOINTMENT_HEIGHT, 1, APPOINTMENT_HEIGHT, 1)
+        ctx.fillStyle = '#FFFFFF88'
+        ctx.fillRect(-APPOINTMENT_HEIGHT, -1, APPOINTMENT_HEIGHT, 5)
         ctx.fill()
         ctx.restore()
       }
@@ -172,12 +172,12 @@ function draw(ctx: CanvasRenderingContext2D, size: number, sunInfo?: {sunrise: D
     ctx.beginPath()
     ctx.rotate(Math.PI / 2 + angleRad)
     ctx.fillStyle = isHour ? 'black' : '#888'
-    ctx.roundRect(-width, -height, width, height, 1)
+    ctx.roundRect(-width, -height, width, height, 2)
     ctx.fill()
     ctx.restore()
 
     if(isHour) {
-      ctx.textAlign = "center"
+      ctx.textAlign = 'center'
       ctx.fillStyle = 'black'
       ctx.fillText(((ii / 2 + 6) % 24).toString(), textX, textY + 5)
     }
